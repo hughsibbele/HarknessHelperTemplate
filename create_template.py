@@ -1,6 +1,6 @@
 """
 Creates the Harkness Helper spreadsheet template as an .xlsx file.
-Tabs: Settings, Discussions, Students, Transcripts, SpeakerMap, StudentReports, Prompts
+Tabs: Settings, Discussions, Students, Transcripts, SpeakerMap, StudentReports, Prompts, Courses
 Headers match exactly what initializeSheetHeaders() in Sheets.gs produces.
 Run: python3 create_template.py
 """
@@ -52,7 +52,7 @@ settings_defaults = [
     ["teacher_email", ""],
     ["teacher_name", ""],
     ["email_subject_template", "Harkness Discussion Report - {date}"],
-    ["gemini_model", "gemini-1.5-flash"],
+    ["gemini_model", "gemini-2.0-flash"],
     ["elevenlabs_model", "scribe_v2"],
     ["canvas_course_id", ""],
     ["canvas_base_url", ""],
@@ -72,15 +72,16 @@ ws_settings.column_dimensions["B"].width = 50
 ws_disc = wb.create_sheet("Discussions")
 
 disc_headers = [
-    "discussion_id", "date", "section", "audio_file_id",
-    "status", "next_step", "grade", "group_feedback", "approved",
+    "status", "next_step", "date", "section", "course",
+    "grade", "approved", "group_feedback",
     "canvas_assignment_id", "canvas_item_type",
-    "error_message", "created_at", "updated_at",
+    "discussion_id", "audio_file_id", "error_message",
+    "created_at", "updated_at",
 ]
 ws_disc.append(disc_headers)
 style_header(ws_disc, len(disc_headers))
 
-disc_widths = [18, 12, 12, 18, 12, 30, 8, 40, 10, 18, 14, 30, 18, 18]
+disc_widths = [12, 30, 12, 12, 14, 8, 10, 40, 18, 14, 18, 18, 30, 18, 18]
 for i, w in enumerate(disc_widths, 1):
     ws_disc.column_dimensions[get_column_letter(i)].width = w
 
@@ -90,11 +91,11 @@ for i, w in enumerate(disc_widths, 1):
 # ============================================================
 ws_stu = wb.create_sheet("Students")
 
-stu_headers = ["student_id", "name", "email", "section", "canvas_user_id"]
+stu_headers = ["name", "email", "section", "course", "canvas_user_id", "student_id"]
 ws_stu.append(stu_headers)
 style_header(ws_stu, len(stu_headers))
 
-stu_widths = [18, 22, 28, 14, 14]
+stu_widths = [22, 28, 14, 14, 14, 18]
 for i, w in enumerate(stu_widths, 1):
     ws_stu.column_dimensions[get_column_letter(i)].width = w
 
@@ -136,15 +137,14 @@ for i, w in enumerate(sm_widths, 1):
 ws_rep = wb.create_sheet("StudentReports")
 
 rep_headers = [
-    "report_id", "discussion_id", "student_id", "student_name",
-    "transcript_contributions", "participation_summary",
-    "grade", "feedback", "approved", "sent",
-    "created_at", "updated_at",
+    "student_name", "grade", "approved", "sent", "feedback",
+    "discussion_id", "transcript_contributions", "participation_summary",
+    "student_id", "report_id", "created_at", "updated_at",
 ]
 ws_rep.append(rep_headers)
 style_header(ws_rep, len(rep_headers))
 
-rep_widths = [18, 18, 18, 20, 40, 30, 8, 40, 10, 8, 18, 18]
+rep_widths = [20, 8, 10, 8, 40, 18, 40, 30, 18, 18, 18, 18]
 for i, w in enumerate(rep_widths, 1):
     ws_rep.column_dimensions[get_column_letter(i)].width = w
 
@@ -262,6 +262,20 @@ ws_prompts.column_dimensions["B"].width = 100
 for row in ws_prompts.iter_rows(min_row=2, min_col=2, max_col=2):
     for cell in row:
         cell.alignment = Alignment(wrap_text=True, vertical="top")
+
+
+# ============================================================
+# Tab 8: Courses (multi-course Canvas config)
+# ============================================================
+ws_courses = wb.create_sheet("Courses")
+
+courses_headers = ["course_name", "canvas_course_id", "canvas_base_url", "canvas_item_type"]
+ws_courses.append(courses_headers)
+style_header(ws_courses, len(courses_headers))
+
+courses_widths = [24, 18, 36, 14]
+for i, w in enumerate(courses_widths, 1):
+    ws_courses.column_dimensions[get_column_letter(i)].width = w
 
 
 # ============================================================

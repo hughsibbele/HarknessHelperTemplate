@@ -23,19 +23,21 @@ You'll need two API keys (takes ~5 minutes to get both):
 
 ### Step 1: Copy the Spreadsheet
 
-1. Click this link: **[Make a copy of Harkness Helper](YOUR_TEMPLATE_LINK_HERE)**
+1. Click this link: **[Make a copy of Harkness Helper](https://docs.google.com/spreadsheets/d/1eO3PXxVS_e9TF6e83tVshmbCcWrBqN-nMwAr1WdKRQA/copy)**
 2. Click **Make a copy** when prompted
 
-You now have your own spreadsheet with 7 tabs: Settings, Discussions, Students, Transcripts, SpeakerMap, StudentReports, and Prompts.
+You now have your own spreadsheet with 8 tabs: Settings, Discussions, Students, Transcripts, SpeakerMap, StudentReports, Prompts, and Courses.
 
 ### Step 2: Add the Code
 
 1. In your spreadsheet, go to **Extensions > Apps Script**
 2. This opens the script editor in a new tab
 3. Delete any code already in the editor
-4. For each `.gs` file in the `src/` folder of this repository (`Code.gs`, `Config.gs`, `Sheets.gs`, `Prompts.gs`, `ElevenLabs.gs`, `Gemini.gs`, `Canvas.gs`, `DriveMonitor.gs`, `Email.gs`):
+4. For each `.gs` file in the `src/` folder of this repository (`Code.gs`, `Config.gs`, `Sheets.gs`, `Prompts.gs`, `ElevenLabs.gs`, `Gemini.gs`, `Canvas.gs`, `DriveMonitor.gs`, `Email.gs`, `Webapp.gs`):
+   > There are 10 script files total, plus 1 HTML file.
    - Click the **+** next to "Files" in the left sidebar, choose **Script**, and name it to match (e.g., `Config`)
    - Copy the file contents and paste them in
+   - For `RecorderApp.html`: click **+** > **HTML**, name it `RecorderApp`, and paste the contents
 5. In the script editor, click the gear icon (**Project Settings**) on the left sidebar
    - Check **"Show 'appsscript.json' manifest file in editor"**
    - Go back to the Editor, open `appsscript.json`, and replace its contents with the `appsscript.json` from this repository
@@ -120,12 +122,33 @@ Click **Harkness Helper > Configure Canvas Course** to set up Canvas grade posti
 
 Rosters are synced automatically. To switch courses or re-sync, run the dialog again.
 
+### Multi-Course Support
+
+If you teach multiple courses that use Harkness discussions, you can track them all in one spreadsheet:
+
+1. Click **Harkness Helper > Enable Multi-Course** (or add rows to the **Courses** sheet manually)
+2. Add each course's name, Canvas course ID, and Canvas base URL
+3. When uploading audio, prefix the filename with the course name: `AP Lit - Section 2 - 2025-01-15.m4a`
+4. Use **Sync Canvas Roster** to sync students from all configured courses at once
+5. Each discussion row has a `course` column to track which course it belongs to
+
+### Mobile Recorder (Optional)
+
+Record discussions directly from your phone using the built-in web app:
+
+1. In the script editor, click **Deploy > New deployment**
+2. Choose **Web app**, set "Execute as" to **Me**, and "Who has access" to **Anyone with a Google account** (or just yourself)
+3. Click **Deploy** and copy the URL
+4. Bookmark the URL on your phone or add it to your home screen
+
+The recorder lets you pick a section, date, and (in multi-course mode) course, then uploads the recording directly to your Upload folder.
+
 ---
 
 ## Costs
 
 - **Transcription**: ~$0.37/hour via ElevenLabs Scribe v2
-- **AI Feedback**: Free via Gemini's free tier (gemini-1.5-flash)
+- **AI Feedback**: Free via Gemini's free tier (gemini-2.0-flash)
 - **Everything else**: Free (Google Sheets, Apps Script, Gmail)
 
 ---

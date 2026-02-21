@@ -303,7 +303,7 @@ function sendAllReportsForDiscussion(discussionId) {
   if (isGroupMode()) {
     // Group mode: send same email to all students in the class
     const students = discussion.section
-      ? getStudentsBySection(discussion.section)
+      ? getStudentsBySectionAndCourse(discussion.section, discussion.course || null)
       : getAllRows(CONFIG.SHEETS.STUDENTS);
 
     for (const student of students) {
@@ -365,3 +365,82 @@ function sendAllReportsForDiscussion(discussionId) {
   return results;
 }
 
+// ============================================================================
+// PREVIEW & TEST
+// ============================================================================
+
+/**
+ * Generate a preview of what emails would be sent
+ * @param {string} discussionId
+ * @returns {Object[]} Array of preview objects
+ */
+function previewEmails(discussionId) {
+  const discussion = getDiscussion(discussionId);
+  const subjectTemplate = getSetting('email_subject_template') || 'Harkness Discussion Report - {date}';
+  const subject = subjectTemplate.replace('{date}', discussion.date || 'Recent');
+
+  if (isGroupMode()) {
+    const students = discussion.section
+      ? getStudentsBySectionAndCourse(discussion.section, discussion.course || null)
+      : getAllRows(CONFIG.SHEETS.STUDENTS);
+
+    return students.map(s => ({
+      studentName: s.name,
+      email: s.email || 'No email',
+      grade: discussion.grade,
+      subject: subject,
+      preview: (discussion.group_feedback || '').substring(0, 100) + '...'
+    }));
+  } else {
+    const reports = getApprovedUnsentReports(discussionId);
+    return reports.map(report => {
+      const student = getStudent(report.student_id);
+      return {
+        studentName: report.student_name,
+        email: student?.email || 'No email',
+        grade: report.grade,
+        subject: subject,
+        preview: (report.feedback || '').substring(0, 100) + '...'
+      };
+    });
+  }
+}
+
+/**
+ * Send a test email to the teacher
+ * @param {string} teacherEmail
+ * @param {string} discussionId
+ * @returns {boolean}
+ */
+function sendTestEmail(teacherEmail, discussionId) {
+  const discussion = getDiscussion(discussionId);
+
+  const subject = `[TEST] Harkness Discussion Report - ${discussion.date || 'Recent'}`;
+
+  let htmlBody, plainBody;
+
+  if (isGroupMode()) {
+    htmlBody = generateGroupFeedbackEmailHtml(discussion, 'Test Student');
+    plainBody = generateGroupFeedbackEmailPlainText(discussion, 'Test Student');
+  } else {
+    const reports = getReportsForDiscussion(discussionId);
+    if (reports.length === 0) {
+      throw new Error('No student reports to preview');
+    }
+    const sample = reports[0];
+    htmlBody = generateIndividualFeedbackEmailHtml(sample, discussion, sample.student_name);
+    plainBody = generateIndividualFeedbackEmailPlainText(sample, discussion, sample.student_name);
+  }
+
+  try {
+    GmailApp.sendEmail(teacherEmail, subject, plainBody, {
+      htmlBody: htmlBody,
+      name: 'Harkness Helper (Test)'
+    });
+    Logger.log(`Sent test email to ${teacherEmail}`);
+    return true;
+  } catch (e) {
+    Logger.log(`Failed to send test email: ${e.message}`);
+    return false;
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * Google Gemini API integration for LLM-powered analysis
  *
- * Uses Gemini 1.5 Flash for cost efficiency. Supports both group and
+ * Uses Gemini 2.0 Flash for cost efficiency. Supports both group and
  * individual feedback modes. All prompts read from the Prompts sheet.
  */
 
@@ -17,7 +17,7 @@
  */
 function callGemini(prompt, options = {}) {
   const apiKey = getGeminiKey();
-  const model = options.model || getSetting('gemini_model') || 'gemini-1.5-flash';
+  const model = options.model || getSetting('gemini_model') || 'gemini-2.0-flash';
 
   const url = `${CONFIG.ENDPOINTS.GEMINI}/models/${model}:generateContent?key=${apiKey}`;
 
@@ -96,17 +96,42 @@ function callGeminiJSON(prompt, options = {}) {
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
-    // Fix common Gemini JSON issues: smart quotes, single quotes, trailing commas
-    const fixed = jsonStr
+    // Fix common Gemini JSON issues: smart quotes, single quotes, trailing commas,
+    // unescaped newlines inside string values, control characters
+    let fixed = jsonStr
       .replace(/[\u201C\u201D\u201E]/g, '"')
       .replace(/[\u2018\u2019\u201A]/g, "'")
       .replace(/'/g, '"')
       .replace(/,\s*([}\]])/g, '$1');
 
+    // Fix unescaped newlines/tabs inside JSON string values
+    fixed = fixed.replace(/"([^"]*?)"/g, function(match, content) {
+      return '"' + content
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t') + '"';
+    });
+
+    // Remove trailing commas that might appear after fixing
+    fixed = fixed.replace(/,\s*([}\]])/g, '$1');
+
     try {
       return JSON.parse(fixed);
     } catch (e2) {
+      // Last resort: try to extract key-value pairs manually for simple objects
       Logger.log(`Failed to parse Gemini JSON response: ${response}`);
+      const pairPattern = /"([^"]+)"\s*:\s*"([^"]*?)"/g;
+      let match;
+      const result = {};
+      let found = false;
+      while ((match = pairPattern.exec(response)) !== null) {
+        result[match[1]] = match[2];
+        found = true;
+      }
+      if (found) {
+        Logger.log(`Recovered JSON via regex extraction: ${JSON.stringify(result)}`);
+        return result;
+      }
       throw new Error(`Invalid JSON from Gemini: ${e.message}`);
     }
   }

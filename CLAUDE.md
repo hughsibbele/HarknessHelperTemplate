@@ -5,24 +5,26 @@ An automated Harkness discussion workflow system built as a Google Apps Script p
 ## Architecture
 
 - **Google Apps Script** (V8 runtime) — no build system, no package manager
-- **Google Sheets** as the database (7 sheets), config store, and prompt store
+- **Google Sheets** as the database (8 sheets), config store, and prompt store
 - **ElevenLabs Scribe v2** for synchronous transcription with speaker diarization
-- **Gemini API** for speaker identification and feedback generation
-- **Canvas LMS API** (optional) for roster sync and grade posting
+- **Gemini 2.0 Flash** for speaker identification and feedback generation
+- **Canvas LMS API** (optional) for roster sync and grade posting; supports multi-course
 
 ## Files
 
 | File | Role |
 |------|------|
-| `Code.gs` | Entry point: conditional menu, Setup Wizard, auto-off trigger system, Canvas config dialog, processing pipeline, feedback generation, send orchestration |
-| `Config.gs` | `CONFIG` constant, `isSetupComplete()`, Script Properties access, mode helpers, `validateConfiguration()` |
-| `Sheets.gs` | Generic CRUD layer over Google Sheets, plus domain-specific helpers for all 7 sheets |
+| `Code.gs` | Entry point: conditional menu, Setup Wizard, auto-off trigger system, Canvas config dialog, processing pipeline, feedback generation, send orchestration, multi-course menu items |
+| `Config.gs` | `CONFIG` constant (including `COURSES` sheet), `isSetupComplete()`, Script Properties access, mode helpers, `validateConfiguration()` |
+| `Sheets.gs` | Generic CRUD layer over Google Sheets, plus domain-specific helpers for all 8 sheets; includes Courses CRUD, `reorderColumns()`, multi-course helpers |
 | `Prompts.gs` | Sheet-based prompt system with `DEFAULT_PROMPTS` fallback; `getPrompt(name, {vars})` |
 | `ElevenLabs.gs` | Synchronous transcription via Scribe v2, blob vs URL upload based on file size |
-| `Gemini.gs` | Gemini API calls, speaker ID, group/individual feedback generation |
-| `Canvas.gs` | Canvas LMS API: paginated requests, student sync, dual-mode grade posting |
-| `DriveMonitor.gs` | Upload folder monitoring, filename parsing, folder setup |
-| `Email.gs` | Dual-mode HTML/plaintext email templates, distribution |
+| `Gemini.gs` | Gemini API calls (default: gemini-2.0-flash), speaker ID, group/individual feedback generation |
+| `Canvas.gs` | Canvas LMS API: paginated requests, student sync, dual-mode grade posting, `stripHtml()`, `fetchCanvasCourseData()` |
+| `DriveMonitor.gs` | Upload folder monitoring, filename parsing (section + course + date), folder setup, `moveToCompleted()` |
+| `Email.gs` | Dual-mode HTML/plaintext email templates with HTML escaping, distribution, `sendTestEmail()` |
+| `Webapp.gs` | Mobile recorder web app backend: `doGet()`, `getRecorderConfig()`, `uploadAudioFile()` |
+| `RecorderApp.html` | Mobile-friendly recording UI with timer, pause/resume, section/course selection, base64 upload |
 
 ## Data Flow
 
@@ -69,12 +71,19 @@ After setup:
 Harkness Helper
   Start Processing
   Stop Processing
+  Process New Files Now
   ───
   Generate Feedback
   Send Approved Feedback
   ───
   Configure Canvas Course
+  Sync Canvas Roster
+  Sync All Course Rosters (multi-course only)
+  Fetch Canvas Course Data
   ───
+  Enable Multi-Course (multi-course only)
+  Check Configuration
+  Reorder / Format Sheets
   Re-run Setup Wizard
 ```
 
@@ -92,17 +101,35 @@ Controlled by `mode` setting in the Settings sheet:
 - **Group mode** (`group`): One grade + one feedback for the whole class. Stored on the Discussion row.
 - **Individual mode** (`individual`): Per-student grades + feedback. Stored in StudentReports rows.
 
-## Google Sheets Structure (7 sheets)
+## Multi-Course Support
+
+Optional. When the **Courses** sheet has entries:
+- Each course has its own Canvas course ID and base URL
+- Students can be tagged with a `course` column
+- Audio filenames can include a course prefix (e.g., `AP Lit - Section 2 - 2025-01-15.m4a`)
+- `menuSyncAllCourseRosters()` syncs students from all configured courses
+- Discussion rows have a `course` column for routing
+
+## Mobile Recorder (Optional)
+
+- `Webapp.gs` serves `RecorderApp.html` via `doGet()` as a Google Apps Script web app
+- Deployed via Apps Script: Deploy > New deployment > Web app
+- Provides in-browser audio recording with section/course/date selection
+- Uploads recordings as base64 directly to the Upload folder via `google.script.run`
+- Multi-course aware — shows course selector when `isMultiCourseMode()` is true
+
+## Google Sheets Structure (8 sheets)
 
 | Sheet | Purpose |
 |-------|---------|
 | Settings | Key-value config (mode, distribution flags, grade scale, teacher info) |
-| Discussions | One row per discussion session with status, grade, group_feedback |
-| Students | Student roster with email and Canvas IDs |
+| Discussions | One row per discussion session with status, grade, group_feedback, course |
+| Students | Student roster with email, section, course, and Canvas IDs |
 | Transcripts | Raw/named transcripts, speaker map JSON |
 | SpeakerMap | One row per speaker per discussion for teacher review |
 | StudentReports | Individual reports with contributions, grades, feedback (individual mode) |
 | Prompts | Teacher-editable prompt templates read at runtime |
+| Courses | Multi-course Canvas configuration (course_name, canvas_course_id, canvas_base_url, canvas_item_type) |
 
 ## Development Notes
 
@@ -113,6 +140,7 @@ Controlled by `mode` setting in the Settings sheet:
 - `getSpreadsheetId()` reads from Script Properties (auto-set by wizard), not hardcoded
 - All sheet initialization is idempotent (`getOrCreateSheet` checks before creating)
 - GAS 6-minute execution limit; `CONFIG.LIMITS.GAS_TIMEOUT_MS` = 5 minutes safety margin
+- Default Gemini model: `gemini-2.0-flash` (configurable via Settings sheet)
 
 ## Style Conventions
 
@@ -121,3 +149,4 @@ Controlled by `mode` setting in the Settings sheet:
 - `getSetting(key)` / `setSetting(key, value)` for Settings sheet
 - `getRequiredProperty(key)` / `setProperty(key, value)` for Script Properties
 - Error messages append to `Discussions.error_message` with timestamps
+- HTML escaping via `escapeHtmlForEmail()` for all dynamic values in email templates
