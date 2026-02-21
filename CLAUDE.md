@@ -1,0 +1,123 @@
+# Harkness Helper Template
+
+An automated Harkness discussion workflow system built as a Google Apps Script project. Teachers upload audio recordings, and the system handles transcription, speaker identification, AI feedback generation, and distribution via email and Canvas.
+
+## Architecture
+
+- **Google Apps Script** (V8 runtime) — no build system, no package manager
+- **Google Sheets** as the database (7 sheets), config store, and prompt store
+- **ElevenLabs Scribe v2** for synchronous transcription with speaker diarization
+- **Gemini API** for speaker identification and feedback generation
+- **Canvas LMS API** (optional) for roster sync and grade posting
+
+## Files
+
+| File | Role |
+|------|------|
+| `Code.gs` | Entry point: conditional menu, Setup Wizard, auto-off trigger system, Canvas config dialog, processing pipeline, feedback generation, send orchestration |
+| `Config.gs` | `CONFIG` constant, `isSetupComplete()`, Script Properties access, mode helpers, `validateConfiguration()` |
+| `Sheets.gs` | Generic CRUD layer over Google Sheets, plus domain-specific helpers for all 7 sheets |
+| `Prompts.gs` | Sheet-based prompt system with `DEFAULT_PROMPTS` fallback; `getPrompt(name, {vars})` |
+| `ElevenLabs.gs` | Synchronous transcription via Scribe v2, blob vs URL upload based on file size |
+| `Gemini.gs` | Gemini API calls, speaker ID, group/individual feedback generation |
+| `Canvas.gs` | Canvas LMS API: paginated requests, student sync, dual-mode grade posting |
+| `DriveMonitor.gs` | Upload folder monitoring, filename parsing, folder setup |
+| `Email.gs` | Dual-mode HTML/plaintext email templates, distribution |
+
+## Data Flow
+
+1. Teacher uploads audio to `Harkness Helper / Upload` folder in Drive
+2. `mainProcessingLoop()` (10-min trigger) detects file, moves to Processing folder
+3. ElevenLabs transcribes synchronously with speaker diarization
+4. Gemini identifies speakers from introductions, populates SpeakerMap sheet
+5. **Group mode**: auto-advances to review; **Individual mode**: waits for teacher to confirm speakers
+6. Teacher enters grade(s), clicks "Generate Feedback" → Gemini generates
+7. Teacher reviews, approves, clicks "Send" → email and/or Canvas distribution
+
+## Key Design Patterns
+
+### Setup Wizard (self-configuring template)
+
+- `isSetupComplete()` checks 5 required Script Properties: `SPREADSHEET_ID`, `ELEVENLABS_API_KEY`, `GEMINI_API_KEY`, `AUDIO_FOLDER_ID`, `PROCESSING_FOLDER_ID`
+- `onOpen()` shows minimal menu (just "Setup Wizard") until setup is complete, then shows full menu
+- `runSetupWizard()` auto-captures spreadsheet ID via `SpreadsheetApp.getActiveSpreadsheet().getId()`, stores API keys, creates Drive folders, initializes sheets/settings/prompts
+- No `setupScriptProperties()`, `initialSetup()`, or `testConfiguration()` — the wizard replaces all of these
+
+### Auto-Off Trigger System
+
+- `menuStartProcessing()` removes existing triggers, records `PROCESSING_START_TIME`, installs 10-min trigger, runs loop immediately
+- `mainProcessingLoop()` checks elapsed time at the top — auto-removes trigger and returns if ≥ `PROCESSING_TIMEOUT_MINUTES` (60 min)
+- `removeProcessingTriggers()` only removes `mainProcessingLoop` triggers (not all project triggers)
+- No always-on triggers — processing is teacher-initiated and self-terminating
+
+### Canvas Config Dialog
+
+- `showCanvasConfigDialog()` uses 3-step `ui.prompt()` flow: base URL → API token → course ID
+- Automatically syncs all rosters (all sections) as the final step
+- Stores token/URL in PropertiesService, course ID + `distribute_canvas=true` in Settings sheet
+- Idempotent — pre-fills existing values, safe to re-run
+
+### Conditional Menu
+
+Before setup:
+```
+Harkness Helper → Setup Wizard (start here)
+```
+
+After setup:
+```
+Harkness Helper
+  Start Processing
+  Stop Processing
+  ───
+  Generate Feedback
+  Send Approved Feedback
+  ───
+  Configure Canvas Course
+  ───
+  Re-run Setup Wizard
+```
+
+## Discussion Status Machine
+
+Defined in `Config.gs` as `CONFIG.STATUS`:
+```
+uploaded → transcribing → mapping → review → approved → sent
+                                                        ↘ error
+```
+
+## Two Modes
+
+Controlled by `mode` setting in the Settings sheet:
+- **Group mode** (`group`): One grade + one feedback for the whole class. Stored on the Discussion row.
+- **Individual mode** (`individual`): Per-student grades + feedback. Stored in StudentReports rows.
+
+## Google Sheets Structure (7 sheets)
+
+| Sheet | Purpose |
+|-------|---------|
+| Settings | Key-value config (mode, distribution flags, grade scale, teacher info) |
+| Discussions | One row per discussion session with status, grade, group_feedback |
+| Students | Student roster with email and Canvas IDs |
+| Transcripts | Raw/named transcripts, speaker map JSON |
+| SpeakerMap | One row per speaker per discussion for teacher review |
+| StudentReports | Individual reports with contributions, grades, feedback (individual mode) |
+| Prompts | Teacher-editable prompt templates read at runtime |
+
+## Development Notes
+
+- This is NOT a Node.js project. No `npm`, `build`, `lint`, or `test` commands
+- Deploy by copying `.gs` files into the Apps Script editor
+- Debug via `Logger.log()` → View > Executions in the script editor
+- Secrets stored in `PropertiesService.getScriptProperties()` (set by Setup Wizard)
+- `getSpreadsheetId()` reads from Script Properties (auto-set by wizard), not hardcoded
+- All sheet initialization is idempotent (`getOrCreateSheet` checks before creating)
+- GAS 6-minute execution limit; `CONFIG.LIMITS.GAS_TIMEOUT_MS` = 5 minutes safety margin
+
+## Style Conventions
+
+- JSDoc comments on functions
+- `CONFIG` constant for sheet names, status values, modes, limits
+- `getSetting(key)` / `setSetting(key, value)` for Settings sheet
+- `getRequiredProperty(key)` / `setProperty(key, value)` for Script Properties
+- Error messages append to `Discussions.error_message` with timestamps
