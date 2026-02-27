@@ -134,12 +134,17 @@ If you teach multiple courses that use Harkness discussions, you can track them 
 
 ### Mobile Recorder (Optional)
 
-Record discussions directly from your phone using the built-in web app:
+Record discussions directly from your phone using the built-in recorder app. The recorder is hosted on **GitHub Pages** (not served from Apps Script) because Apps Script's sandboxed iframe blocks microphone access.
 
+**Backend setup:**
 1. In the script editor, click **Deploy > New deployment**
-2. Choose **Web app**, set "Execute as" to **Me**, and "Who has access" to **Anyone with a Google account** (or just yourself)
-3. Click **Deploy** and copy the URL
-4. Bookmark the URL on your phone or add it to your home screen
+2. Choose **Web app**, set "Execute as" to **Me**, and "Who has access" to **Anyone** (not "Anyone with a Google account" — the GitHub Pages frontend needs unauthenticated API access)
+3. Click **Deploy** and copy the `/exec` URL
+
+**Frontend setup:**
+4. In `src/RecorderApp.html`, replace `DEPLOYMENT_ID` in the `APPS_SCRIPT_URL` variable with the deployment ID from the URL above
+5. Host the repository on GitHub Pages (Settings > Pages > Source: main branch, `/` root) or serve `src/RecorderApp.html` from any static host
+6. Bookmark the GitHub Pages URL on your phone or add it to your home screen
 
 The recorder lets you pick a section, date, and (in multi-course mode) course, then uploads the recording directly to your Upload folder.
 
