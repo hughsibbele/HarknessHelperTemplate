@@ -329,6 +329,10 @@ function updateDiscussion(discussionId, data) {
 
   data.updated_at = new Date().toISOString();
   updateRow(CONFIG.SHEETS.DISCUSSIONS, discussion._rowIndex, data);
+
+  // Keep row height fixed so large feedback doesn't expand the sheet
+  const sheet = getOrCreateSheet(CONFIG.SHEETS.DISCUSSIONS);
+  sheet.setRowHeight(discussion._rowIndex, 21);
 }
 
 // ============================================================================
@@ -1045,6 +1049,12 @@ function formatSheets() {
     const errorCol = getColumnIndex(CONFIG.SHEETS.DISCUSSIONS, 'error_message');
     if (errorCol > 0) {
       discussionsSheet.getRange(2, errorCol, 1000, 1).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+    }
+
+    // Fix row heights so large feedback doesn't expand rows
+    const lastRow = Math.max(discussionsSheet.getLastRow(), 2);
+    if (lastRow >= 2) {
+      discussionsSheet.setRowHeights(2, lastRow - 1, 21);
     }
 
     // Conditional formatting: error rows red, sent rows green
