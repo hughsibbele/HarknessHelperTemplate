@@ -24,6 +24,23 @@ function escapeHtmlForEmail(str) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Format a date value as a readable date string (no time).
+ * Handles Date objects, ISO strings, and plain strings.
+ * @param {Date|string} date
+ * @returns {string} e.g. "March 24, 2026"
+ */
+function formatDateForEmail(date) {
+  if (!date) return 'Recent Discussion';
+  try {
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    return String(date);
+  }
+}
+
 // ============================================================================
 // EMAIL TEMPLATES — GROUP MODE
 // ============================================================================
@@ -35,11 +52,11 @@ function escapeHtmlForEmail(str) {
  * @returns {string} HTML email body
  */
 function generateGroupFeedbackEmailHtml(discussion, studentName) {
-  const date = escapeHtmlForEmail(discussion.date || 'Recent Discussion');
+  const date = escapeHtmlForEmail(formatDateForEmail(discussion.date));
   const period = escapeHtmlForEmail(discussion.section || 'Class');
   const firstName = escapeHtmlForEmail(studentName.split(' ')[0]);
   const feedback = escapeHtmlForEmail(discussion.group_feedback || 'No feedback available.')
-    .split('\n\n').join('</p><p>');
+    .split('\n\n').join('</p><p style="margin-top: 1em;">');
 
   return `
 <!DOCTYPE html>
@@ -50,13 +67,13 @@ function generateGroupFeedbackEmailHtml(discussion, studentName) {
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.6;
-      color: #333;
+      color: #54565b;
       max-width: 600px;
       margin: 0 auto;
       padding: 20px;
     }
     .header {
-      background: #4285f4;
+      background: #7a1e46;
       color: white;
       padding: 20px;
       border-radius: 8px 8px 0 0;
@@ -79,8 +96,8 @@ function generateGroupFeedbackEmailHtml(discussion, studentName) {
     .section h2 {
       margin: 0 0 10px;
       font-size: 16px;
-      color: #4285f4;
-      border-bottom: 2px solid #4285f4;
+      color: #7a1e46;
+      border-bottom: 2px solid #7a1e46;
       padding-bottom: 5px;
     }
     .section p { margin: 0; }
@@ -93,11 +110,11 @@ function generateGroupFeedbackEmailHtml(discussion, studentName) {
       margin-bottom: 15px;
     }
     .grade-box .grade { font-size: 36px; font-weight: bold; color: #2e7d32; }
-    .grade-box .label { color: #666; font-size: 14px; }
-    .feedback { background: #fff3e0; border-left: 4px solid #ff9800; }
+    .grade-box .label { color: #54565b; font-size: 14px; }
+    .feedback { background: #fdf2f7; border-left: 4px solid #7a1e46; }
     .footer {
       text-align: center;
-      color: #666;
+      color: #54565b;
       font-size: 12px;
       margin-top: 20px;
       padding-top: 15px;
@@ -132,7 +149,7 @@ function generateGroupFeedbackEmailHtml(discussion, studentName) {
  * Generate plain text email for group feedback
  */
 function generateGroupFeedbackEmailPlainText(discussion, studentName) {
-  const date = discussion.date || 'Recent Discussion';
+  const date = formatDateForEmail(discussion.date);
   const period = discussion.section || 'Class';
 
   return `
@@ -162,11 +179,11 @@ If you have questions, please speak with your teacher.
  * @returns {string} HTML email body
  */
 function generateIndividualFeedbackEmailHtml(report, discussion, studentName) {
-  const date = escapeHtmlForEmail(discussion.date || 'Recent Discussion');
+  const date = escapeHtmlForEmail(formatDateForEmail(discussion.date));
   const period = escapeHtmlForEmail(discussion.section || 'Class');
   const firstName = escapeHtmlForEmail(studentName.split(' ')[0]);
   const feedback = escapeHtmlForEmail(report.feedback || 'Great participation! Keep up the good work.')
-    .split('\n\n').join('</p><p>');
+    .split('\n\n').join('</p><p style="margin-top: 1em;">');
 
   return `
 <!DOCTYPE html>
@@ -177,13 +194,13 @@ function generateIndividualFeedbackEmailHtml(report, discussion, studentName) {
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.6;
-      color: #333;
+      color: #54565b;
       max-width: 600px;
       margin: 0 auto;
       padding: 20px;
     }
     .header {
-      background: #4285f4;
+      background: #7a1e46;
       color: white;
       padding: 20px;
       border-radius: 8px 8px 0 0;
@@ -206,8 +223,8 @@ function generateIndividualFeedbackEmailHtml(report, discussion, studentName) {
     .section h2 {
       margin: 0 0 10px;
       font-size: 16px;
-      color: #4285f4;
-      border-bottom: 2px solid #4285f4;
+      color: #7a1e46;
+      border-bottom: 2px solid #7a1e46;
       padding-bottom: 5px;
     }
     .section p { margin: 0; }
@@ -220,11 +237,11 @@ function generateIndividualFeedbackEmailHtml(report, discussion, studentName) {
       margin-bottom: 15px;
     }
     .grade-box .grade { font-size: 36px; font-weight: bold; color: #2e7d32; }
-    .grade-box .label { color: #666; font-size: 14px; }
-    .feedback { background: #fff3e0; border-left: 4px solid #ff9800; }
+    .grade-box .label { color: #54565b; font-size: 14px; }
+    .feedback { background: #fdf2f7; border-left: 4px solid #7a1e46; }
     .footer {
       text-align: center;
-      color: #666;
+      color: #54565b;
       font-size: 12px;
       margin-top: 20px;
       padding-top: 15px;
@@ -259,7 +276,7 @@ function generateIndividualFeedbackEmailHtml(report, discussion, studentName) {
  * Generate plain text email for individual feedback
  */
 function generateIndividualFeedbackEmailPlainText(report, discussion, studentName) {
-  const date = discussion.date || 'Recent Discussion';
+  const date = formatDateForEmail(discussion.date);
   const period = discussion.section || 'Class';
 
   return `
@@ -296,7 +313,7 @@ function sendAllReportsForDiscussion(discussionId) {
 
   // Build email subject from template
   const subjectTemplate = getSetting('email_subject_template') || 'Harkness Discussion Report - {date}';
-  const subject = subjectTemplate.replace('{date}', discussion.date || 'Recent');
+  const subject = subjectTemplate.replace('{date}', formatDateForEmail(discussion.date));
 
   const results = { sent: 0, failed: 0, errors: [] };
 
@@ -377,7 +394,7 @@ function sendAllReportsForDiscussion(discussionId) {
 function previewEmails(discussionId) {
   const discussion = getDiscussion(discussionId);
   const subjectTemplate = getSetting('email_subject_template') || 'Harkness Discussion Report - {date}';
-  const subject = subjectTemplate.replace('{date}', discussion.date || 'Recent');
+  const subject = subjectTemplate.replace('{date}', formatDateForEmail(discussion.date));
 
   if (isGroupMode()) {
     const students = discussion.section
@@ -415,7 +432,7 @@ function previewEmails(discussionId) {
 function sendTestEmail(teacherEmail, discussionId) {
   const discussion = getDiscussion(discussionId);
 
-  const subject = `[TEST] Harkness Discussion Report - ${discussion.date || 'Recent'}`;
+  const subject = `[TEST] Harkness Discussion Report - ${formatDateForEmail(discussion.date)}`;
 
   let htmlBody, plainBody;
 
