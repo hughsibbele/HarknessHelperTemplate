@@ -25,69 +25,26 @@ function submitTranscriptionBlob(fileId, numSpeakers = null) {
   const file = DriveApp.getFileById(fileId);
   const blob = file.getBlob();
 
-  const boundary = '----FormBoundary' + Utilities.getUuid();
-  const contentType = 'multipart/form-data; boundary=' + boundary;
+  // Use GAS native object payload — it handles multipart encoding internally
+  // without loading file bytes into a JS array (avoids OOM on large files)
+  const payload = {
+    model_id: sttModel,
+    diarize: 'true',
+    language_code: 'en',
+    file: blob
+  };
 
-  // Build multipart form data manually for GAS compatibility
-  const parts = [];
-
-  // model_id field
-  parts.push(
-    '--' + boundary + '\r\n' +
-    'Content-Disposition: form-data; name="model_id"\r\n\r\n' +
-    sttModel
-  );
-
-  // diarize field
-  parts.push(
-    '--' + boundary + '\r\n' +
-    'Content-Disposition: form-data; name="diarize"\r\n\r\n' +
-    'true'
-  );
-
-  // language_code field
-  parts.push(
-    '--' + boundary + '\r\n' +
-    'Content-Disposition: form-data; name="language_code"\r\n\r\n' +
-    'en'
-  );
-
-  // num_speakers hint (helps diarization accuracy with known class sizes)
   if (numSpeakers && numSpeakers > 0) {
     const capped = Math.min(numSpeakers, 32);
-    parts.push(
-      '--' + boundary + '\r\n' +
-      'Content-Disposition: form-data; name="num_speakers"\r\n\r\n' +
-      capped.toString()
-    );
+    payload.num_speakers = capped.toString();
     Logger.log(`Hint: num_speakers=${capped}`);
   }
-
-  // Combine text parts
-  const preFileData = Utilities.newBlob(parts.join('\r\n') + '\r\n').getBytes();
-
-  // File part header
-  const fileHeader = Utilities.newBlob(
-    '--' + boundary + '\r\n' +
-    'Content-Disposition: form-data; name="file"; filename="' + file.getName() + '"\r\n' +
-    'Content-Type: ' + file.getMimeType() + '\r\n\r\n'
-  ).getBytes();
-
-  // File content
-  const fileBytes = blob.getBytes();
-
-  // Closing boundary
-  const closing = Utilities.newBlob('\r\n--' + boundary + '--\r\n').getBytes();
-
-  // Concatenate all byte arrays
-  const payload = [].concat(preFileData, fileHeader, fileBytes, closing);
 
   const options = {
     method: 'POST',
     headers: {
       'xi-api-key': apiKey
     },
-    contentType: contentType,
     payload: payload,
     muteHttpExceptions: true
   };
