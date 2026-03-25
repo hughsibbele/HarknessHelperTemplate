@@ -1140,6 +1140,21 @@ function formatSheets() {
   // --- Transcripts sheet ---
   const transcriptsSheet = ss.getSheetByName(CONFIG.SHEETS.TRANSCRIPTS);
   if (transcriptsSheet) {
+    // Clip all transcript text columns so rows don't auto-expand
+    const transcriptTextCols = [
+      'raw_transcript', 'raw_transcript_2', 'named_transcript', 'named_transcript_2', 'speaker_map'
+    ];
+    for (const col of transcriptTextCols) {
+      const idx = getColumnIndex(CONFIG.SHEETS.TRANSCRIPTS, col);
+      if (idx > 0) {
+        transcriptsSheet.getRange(2, idx, 1000, 1).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+      }
+    }
+    // Fixed row height: 2x normal (42px)
+    const tLastRow = Math.max(transcriptsSheet.getLastRow(), 2);
+    if (tLastRow >= 2) {
+      transcriptsSheet.setRowHeights(2, tLastRow - 1, 42);
+    }
     transcriptsSheet.setTabColor('#9e9e9e');
   }
 
