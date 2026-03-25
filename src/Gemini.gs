@@ -142,13 +142,17 @@ function callGeminiJSON(prompt, options = {}) {
 // ============================================================================
 
 /**
- * Identify speakers from transcript introductions
+ * Identify speakers from transcript using introductions, context clues, and roster
  * @param {string} transcriptExcerpt - First few minutes of transcript
+ * @param {string[]} rosterNames - Known student names from the class roster
  * @returns {Object} Map of speaker labels to names (e.g. {"Speaker 0": "Maria"})
  */
-function identifySpeakers(transcriptExcerpt) {
+function identifySpeakers(transcriptExcerpt, rosterNames = []) {
   const prompt = getPrompt('SPEAKER_IDENTIFICATION', {
-    transcript: transcriptExcerpt
+    transcript: transcriptExcerpt,
+    roster: rosterNames.length > 0
+      ? '\nStudent roster for this section:\n' + rosterNames.join(', ') + '\n'
+      : ''
   });
 
   const speakerMap = callGeminiJSON(prompt);

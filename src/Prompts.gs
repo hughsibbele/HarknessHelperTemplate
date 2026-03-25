@@ -17,19 +17,18 @@ const DEFAULT_PROMPTS = {
 
   SPEAKER_IDENTIFICATION: `You are analyzing the beginning of a classroom Harkness discussion recording.
 
-Students typically introduce themselves at the start. Listen for patterns like:
-- "Hi, I'm [name]"
-- "My name is [name]"
-- "This is [name]"
-- "[Name] here"
-- Other natural introductions
-
-Analyze this transcript excerpt and identify which speaker label corresponds to which student name.
+Students typically introduce themselves, but not always right away — some may speak before introducing themselves and say their name later. Look for identification clues throughout the excerpt, including:
+- Explicit introductions: "Hi, I'm [name]", "My name is [name]", "[Name] here"
+- Other students addressing them by name: "I agree with [name]", "Like [name] said"
+- The teacher calling on them or referring to them by name
+- Any other context that links a speaker label to a name
+{roster}
+Analyze this transcript excerpt and identify which speaker label corresponds to which student name. Focus on the first few minutes where introductions happen, but note that some speakers may talk before introducing themselves — if a name is revealed shortly after, link it back to the correct speaker label.
 
 IMPORTANT RULES:
-1. Only include speakers you can confidently identify from explicit introductions
-2. If a speaker cannot be identified, map them to "?" instead
-3. Be case-sensitive with names as they appear
+1. Use all available context to identify speakers, not just their first lines
+2. If a student roster is provided, match identified names to the closest roster name (correct minor transcription spelling errors)
+3. If a speaker cannot be identified, map them to "?" instead
 4. The teacher may also speak — if identified, include them as "Teacher"
 
 Return ONLY a valid JSON object mapping speaker labels to names.

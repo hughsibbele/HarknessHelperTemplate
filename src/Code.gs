@@ -417,19 +417,33 @@ function processSpeakerMapping(discussionId) {
 
   const rawTranscript = String(transcript.raw_transcript);
 
-  // Get first ~3 minutes of transcript for speaker ID
+  // Get first ~5 minutes of transcript for speaker ID (extra context helps
+  // identify speakers who talk before introducing themselves)
   const lines = rawTranscript.split('\n');
   const excerptLines = [];
   for (const line of lines) {
     excerptLines.push(line);
-    // Check if we've reached ~3 minutes by parsing timestamps
     const timeMatch = line.match(/\[(\d+):/);
-    if (timeMatch && parseInt(timeMatch[1]) >= 3) break;
+    if (timeMatch && parseInt(timeMatch[1]) >= 5) break;
   }
-  const excerpt = excerptLines.join('\n') || rawTranscript.substring(0, 5000);
+  const excerpt = excerptLines.join('\n') || rawTranscript.substring(0, 8000);
+
+  // Get student roster for this section so Gemini can match/correct names
+  const discussion = getDiscussion(discussionId);
+  let rosterNames = [];
+  if (discussion && discussion.section) {
+    try {
+      const students = getStudentsBySectionAndCourse(
+        discussion.section, discussion.course || null
+      );
+      rosterNames = students.map(s => s.name).filter(Boolean);
+    } catch (e) {
+      Logger.log(`Could not load roster for speaker ID: ${e.message}`);
+    }
+  }
 
   // Gemini speaker identification
-  const speakerMap = identifySpeakers(excerpt);
+  const speakerMap = identifySpeakers(excerpt, rosterNames);
 
   // Also get all speaker labels from transcript (in case Gemini missed some)
   const allLabels = extractSpeakerLabels(rawTranscript);
